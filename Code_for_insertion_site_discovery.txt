@@ -1,22 +1,42 @@
-Bash Commands
+Insertion SIte discovery
 
-QC of FastQ files
+The tree command should produce a directory lke this intiailly for this pipeline:
+.
+├── A0183263E_1.fq
+├── A0183263E_2.fq
+├── CA2_ref_files
+│   ├── genome
+│   ├── sacCer3.fa
+│   ├── saccharomyces_cerevisiae.gff
+│   ├── saccharomyces_cerevisiae_no_fasta.gff
+│   ├── transposon
+│   └── ty5_6p.fa
+└── results
+    ├── bam
+    ├── fastqc
+    └── sam
+
+
+##QC of FastQ files:
+
 fastqc A0183263E_* -o results/fastqc/
 
-Building the index Reference Genome and Transposon sequence for Bowtie 2 alignment:
+##Building the index Reference Genome and Transposon sequence for Bowtie 2 alignment:
+
 bowtie2-build CA2_ref_files/sacCer3.fa CA2_ref_files/genome/yeast
 bowtie2-build CA2_ref_files/ty5_6p.fa CA2_ref_files/transposon/ty5_6p.fa
 
-End to end alignment of clone paired end reads to reference genome sequence via Bowtie 2:
+##End to end alignment of clone paired end reads to reference genome sequence via Bowtie 2:
 bowtie2 -x CA2_ref_files/genome/yeast -p 8 -1 A0183263E_1.fq  -2 A0183263E_2.fq -S results/sam/A0183263E.sam
 
-Local alignment of clone paired end reads to reference genome sequence:
+#Local alignment of clone paired end reads to reference genome sequence:
 bowtie2 -x CA2_ref_files/genome/yeast -p 8 -1 A0183263E_1.fq  -2 A0183263E_2.fq -S results/sam/reference_local_alignment.sam
 
-End to end alignment of clone paired end reads to transposon sequence:
+##End to end alignment of clone paired end reads to transposon sequence:
 bowtie2 --local -x CA2_ref_files/ty5_6p.fa CA2_ref_files/transposon/ty5_6p.fa -p 8 -1 A0183263E_1.fq  -2 A0183263E_2.fq -S results/sam/A0183263E_transposon.sam
 
-Extracting MU/UM paired reads from reference genome and transposon sequence aligned clone sequences using Samtools:
+##Extracting MU/UM paired reads from reference genome and transposon sequence aligned clone sequences using Samtools:
+
 samtools view -f 4 -F 264 results/sam/A0183263E.sam > results/sam/A0183263E_1_pair_mapped_reference_1.sam
 samtools view -f 8 -F 260 results/sam/A0183263E.sam > results/sam/A0183263E_1_pair_mapped_reference_2.sam
 
@@ -24,43 +44,57 @@ samtools view -f 4 -F 264 results/sam/A0183263E_transposon.sam > results/sam/A01
 samtools view -f 8 -F 260 results/sam/A0183263E_transposon.sam > results/sam/A0183263E_transposon_single_mapped_mates_1.sam
 
 
-Combining the MU/UM paired reads together:
+##Combining the MU/UM paired reads together:
+
 cat results/sam/A0183263E_1_pair_mapped_reference_* > results/sam/A0183263E_1_pair_mapped_reference_combined.sam
 
 cat results/sam/A0183263E_transposon_single_mapped_mates_*> results/sam/A0183263E_transposon_single_unmapped_mates_combined.sam
 
-Extracting MU/UM reads common to clone sequences aligned to reference genome and transposon sequence to form RefTrans pairs:
+##Extracting MU/UM reads common to clone sequences aligned to reference genome and transposon sequence to form RefTrans pairs:
+
+##Retrieving read names of MU/UM reads from both the reference genome and transposon alignments:
 
 cut -f 1 results/sam/A0183263E_1_pair_mapped_reference_combined.sam> results/sam/MU_UM_reference_aligned_read_names.txt
 cut -f 1 results/sam/A0183263E_transposon_single_unmapped_mates_combined.sam> results/sam/MU_UM_transposon_aligned_read_names.txt
+
+##Identifying common read names in both files
 comm -12 results/sam/MU_UM_reference_aligned_read_names.txt results/sam/MU_UM_transposon_aligned_read_names.txt> results/sam/reftrans_read_names.txt
+
+##Extracting common read names from the reference genome alignment to get RefTrans pairs that map to the reference genome:
 
 grep -f reftrans_read_names.txt results/sam/A0183263E_1_pair_mapped_reference_combined.sam> results/sam/reftrans_reads.sam
 
-Converting RefTrans pairs into bam format, then sorting and indexing bam file:
+##Converting RefTrans pairs into bam format, then sorting and indexing bam file:
+
 samtools view -S -b results/sam/reftrans_reads.sam> results/bam/reftrans_reads.bam -t CA2_ref_files/sacCer3.fa.fai
 samtools sort results/bam/reftrans_reads.bam > results/bam/reftrans_reads-sorted.bam
 samtools index results/bam/reftrans_reads-sorted.bam
 
 
-Identifying reads from RefTrans pairs that are found on one side of the insertion site:
+##Identifying reads from RefTrans pairs that are found on one side of the insertion site that map to the transposon:
 
-Right side of proposed insertion site in region 3:
-Extract reads from one side of the insertion site by filtering for chromosome number and position on said chromosome
+##Right side of proposed insertion site in region 3:
+
+##Extract reads from one side of the insertion site by filtering for chromosome number and position on said chromosome:
+
 awk '{ if (($4>1292726) && ($4<1293126)  && ($3=="chrIV")){print} }' reftrans_reads.sam > results/sam/chrIV_reads_right_side_of_insertion.sam
 
-Retrieve the read names of RefTrans pairs that map on one side of the insertion site:
+##Retrieve the read names of RefTrans pairs that map on one side of the insertion site:
+
 cut -f 1 results/sam/chrIV_reads_right_side_of_insertion.sam |uniq| sort > results/sam/chrIV_reads_right_side_of_insertion.txt
 
-Extracting the reads on these RefTrans pairs that map to the transposon using the read names:
+##Extracting the reads on these RefTrans pairs that map to the transposon using the read names:
+
 grep -f results/sam/chrIV_reads_right_side_of_insertion.txt results/sam/A0183263E_transposon_single_unmapped_mates_combined_sorted.sam > results/sam/chrIV_reads_right_side_of_insertion_on_transposon.sam
 
-Convert these reads to bam files, then sorting and indexing the ba file
+##Convert these reads to bam files, then sorting and indexing the bam file:
+
 samtools view -S -b results/sam/chrIV_reads_right_side_of_insertion_on_transposon.sam -t CA2_ref_files/ty5_6p.fa.fai > results/bam/chrIV_reads_right_side_of_insertion_on_transposon.bam
 samtools sort results/bam/chrIV_reads_right_side_of_insertion_on_transposon.bam > results/bam/chrIV_reads_right_side_of_insertion_on_transposon-sorted.bam
 samtools index results/bam/chrIV_reads_right_side_of_insertion_on_transposon-sorted.bam
  
-Left side of proposed insertion site on region 3:
+##Left side of proposed insertion site on region 3:
+
 awk '{ if (($4>1292326) && ($4<=1292726)  && ($3=="chrIV")){print} }' reftrans_reads.sam > results/sam/chrIV_reads_left_side_of_insertion.sam
 cut -f 1 results/sam/chrIV_reads_left_side_of_insertion.sam |uniq| sort > results/sam/chrIV_reads_left_side_of_insertion.txt
 grep -f results/sam/chrIV_reads_left_side_of_insertion.txt A0183263E_transposon_single_unmapped_mates_combined_sorted.sam > results/sam/chrIV_reads_left_side_of_insertion_on_transposon.sam
@@ -69,7 +103,8 @@ samtools sort results/bam/chrIV_reads_left_side_of_insertion_on_transposon.bam >
 samtools index results/bam/chrIV_reads_left_side_of_insertion_on_transposon-sorted.bam
 
 
-Right side of proposed insertion site in region 7:
+##Right side of proposed insertion site in region 7:
+
 awk '{ if (($4>12199) && ($4<=12599)  && ($3=="chrVIII")){print} }' reftrans_reads.sam > results/sam/chrVIII_reads_right_side_of_insertion.sam
 cut -f 1 results/sam/chrVIII_reads_right_side_of_insertion.sam |uniq| sort > results/sam/chrVIII_reads_right_side_of_insertion.txt
 grep -f results/sam/chrVIII_reads_right_side_of_insertion.txt results/sam/A0183263E_transposon_single_unmapped_mates_combined_sorted.sam > results/sam/chrVIII_reads_right_side_of_insertion_on_transposon.sam
@@ -77,7 +112,8 @@ samtools view -S -b results/sam/chrVIII_reads_right_side_of_insertion_on_transpo
 samtools sort results/bam/chrVIII_reads_right_side_of_insertion_on_transposon.bam > results/bam/chrVIII_reads_right_side_of_insertion_on_transposon-sorted.bam
 samtools index results/bam/chrVIII_reads_right_side_of_insertion_on_transposon-sorted.bam
 
-Left side of proposed insertion site in region 7:
+##Left side of proposed insertion site in region 7:
+
 awk '{ if (($4<=12199) && ($4>11799)  && ($3=="chrVIII")){print} }' reftrans_reads.sam > results/sam/chrVIII_reads_left_side_of_insertion.sam
 cut -f 1 results/sam/chrVIII_reads_left_side_of_insertion.sam |uniq| sort > results/sam/chrVIII_reads_left_side_of_insertion.txt
 grep -f results/sam/chrVIII_reads_left_side_of_insertion.txt results/sam/A0183263E_transposon_single_unmapped_mates_combined_sorted.sam > results/sam/chrVIII_reads_left_side_of_insertion_on_transposon.sam
