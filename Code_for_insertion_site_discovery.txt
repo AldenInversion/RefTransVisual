@@ -1,4 +1,4 @@
-Insertion SIte discovery
+Insertion Site discovery
 
 The tree command should produce an initial directory lke this for the pipeline:
 .
@@ -15,7 +15,7 @@ The tree command should produce an initial directory lke this for the pipeline:
     ├── bam
     ├── fastqc
     └── sam
-
+Indexed bam files are used for visualisation of regions of interest and typically demarcated the end product of preprocessing for visualisation.
 
 ##QC of FastQ files:
 
