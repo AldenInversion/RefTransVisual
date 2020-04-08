@@ -1,6 +1,6 @@
 Insertion SIte discovery
 
-The tree command should produce a directory lke this intiailly for this pipeline:
+The tree command should produce an initial directory lke this for the pipeline:
 .
 ├── A0183263E_1.fq
 ├── A0183263E_2.fq
@@ -26,13 +26,16 @@ fastqc A0183263E_* -o results/fastqc/
 bowtie2-build CA2_ref_files/sacCer3.fa CA2_ref_files/genome/yeast
 bowtie2-build CA2_ref_files/ty5_6p.fa CA2_ref_files/transposon/ty5_6p.fa
 
-##End to end alignment of clone paired end reads to reference genome sequence via Bowtie 2:
+##End to end alignment of clone paired-end reads to reference genome sequence via Bowtie 2:
+
 bowtie2 -x CA2_ref_files/genome/yeast -p 8 -1 A0183263E_1.fq  -2 A0183263E_2.fq -S results/sam/A0183263E.sam
 
-#Local alignment of clone paired end reads to reference genome sequence:
+##Local alignment of clone paired-end reads to reference genome sequence:
+
 bowtie2 -x CA2_ref_files/genome/yeast -p 8 -1 A0183263E_1.fq  -2 A0183263E_2.fq -S results/sam/reference_local_alignment.sam
 
-##End to end alignment of clone paired end reads to transposon sequence:
+##End to end alignment of clone paired-end reads to transposon sequence:
+
 bowtie2 --local -x CA2_ref_files/ty5_6p.fa CA2_ref_files/transposon/ty5_6p.fa -p 8 -1 A0183263E_1.fq  -2 A0183263E_2.fq -S results/sam/A0183263E_transposon.sam
 
 ##Extracting MU/UM paired reads from reference genome and transposon sequence aligned clone sequences using Samtools:
@@ -43,11 +46,9 @@ samtools view -f 8 -F 260 results/sam/A0183263E.sam > results/sam/A0183263E_1_pa
 samtools view -f 4 -F 264 results/sam/A0183263E_transposon.sam > results/sam/A0183263E_transposon_single_mapped_mates_2.sam
 samtools view -f 8 -F 260 results/sam/A0183263E_transposon.sam > results/sam/A0183263E_transposon_single_mapped_mates_1.sam
 
-
 ##Combining the MU/UM paired reads together:
 
 cat results/sam/A0183263E_1_pair_mapped_reference_* > results/sam/A0183263E_1_pair_mapped_reference_combined.sam
-
 cat results/sam/A0183263E_transposon_single_mapped_mates_*> results/sam/A0183263E_transposon_single_unmapped_mates_combined.sam
 
 ##Extracting MU/UM reads common to clone sequences aligned to reference genome and transposon sequence to form RefTrans pairs:
@@ -62,15 +63,23 @@ comm -12 results/sam/MU_UM_reference_aligned_read_names.txt results/sam/MU_UM_tr
 
 ##Extracting common read names from the reference genome alignment to get RefTrans pairs that map to the reference genome:
 
-grep -f reftrans_read_names.txt results/sam/A0183263E_1_pair_mapped_reference_combined.sam> results/sam/reftrans_reads.sam
+grep -f reftrans_read_names.txt results/sam/A0183263E_1_pair_mapped_reference_combined.sam > results/sam/reftrans_reads.sam
 
-##Converting RefTrans pairs into bam format, then sorting and indexing bam file:
+##Converting RefTrans pairs into bam format, then sorting and indexing the bam file:
 
 samtools view -S -b results/sam/reftrans_reads.sam> results/bam/reftrans_reads.bam -t CA2_ref_files/sacCer3.fa.fai
 samtools sort results/bam/reftrans_reads.bam > results/bam/reftrans_reads-sorted.bam
 samtools index results/bam/reftrans_reads-sorted.bam
 
+##Converting the local alignment of the clone sequence to bam format, then sorting and indexing the bam file:
 
+samtools view -S -b results/sam/reference_local_alignment.sam >  results/bam/reference_local_alignment.bam
+samtools sort  results/bam/reference_local_alignment.bam > results/bam/reference_local_alignment-sorted.bam
+samtools index results/bam/reference_local_alignment-sorted.bam
+
+
+
+________________________________________________________________________________________________________________________________________
 ##Identifying reads from RefTrans pairs that are found on one side of the insertion site that map to the transposon:
 
 ##Right side of proposed insertion site in region 3:
