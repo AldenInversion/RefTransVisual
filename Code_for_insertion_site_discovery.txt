@@ -26,6 +26,11 @@ fastqc A0183263E_* -o results/fastqc/
 bowtie2-build CA2_ref_files/sacCer3.fa CA2_ref_files/genome/yeast
 bowtie2-build CA2_ref_files/ty5_6p.fa CA2_ref_files/transposon/ty5_6p.fa
 
+##Indexing the reference genome and transposon:
+
+samtools faidx CA2_ref_files/sacCer3.fa
+samtools faidx CA2_ref_files/ty5_6p.fa
+
 ##End to end alignment of clone paired-end reads to reference genome sequence via Bowtie 2:
 
 bowtie2 -x CA2_ref_files/genome/yeast -p 8 -1 A0183263E_1.fq  -2 A0183263E_2.fq -S results/sam/A0183263E.sam
