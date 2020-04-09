@@ -8,7 +8,6 @@ The tree command should produce an initial directory lke this for the pipeline:
 │   ├── genome
 │   ├── sacCer3.fa
 │   ├── saccharomyces_cerevisiae.gff
-│   ├── saccharomyces_cerevisiae_no_fasta.gff
 │   ├── transposon
 │   └── ty5_6p.fa
 └── results
